@@ -6,7 +6,9 @@ import (
 
 // VoxelDictionary, contains specific information about voxels.
 type VoxelDictionary struct {
-	Voxels []Voxel
+	Voxels      []Voxel
+	Transparent []string
+	Opaque      []string
 }
 
 // Voxel, contains information about a voxel.
@@ -32,14 +34,26 @@ type Chunk struct {
 }
 
 // Get voxel at x, y, z
-func (c *Chunk) GetVoxel(x, y, z int) VoxelPointer {
-	return c.Voxels[x+y*c.Width+z*c.Width*c.Height]
+func (c *Chunk) GetVoxel(x, y, z int) Voxel {
+	var voxelPointer = c.Voxels[x+y*c.Width+z*c.Width*c.Height]
+	return voxelPointer.VoxelDictionary.Voxels[voxelPointer.Index]
+}
+
+// get voxel dictionary at x, y, z
+func (c *Chunk) GetVoxelDictionary(x, y, z int) *VoxelDictionary {
+	var voxelPointer = c.Voxels[x+y*c.Width+z*c.Width*c.Height]
+	return voxelPointer.VoxelDictionary
+}
+
+// set voxel at x, y, z
+func (c *Chunk) SetVoxel(x, y, z int, voxel VoxelPointer) {
+	c.Voxels[x+y*c.Width+z*c.Width*c.Height] = voxel
 }
 
 // Make chunk from 3D array of voxels
-func MakeChunk(voxels [][][]VoxelPointer) *Chunk {
+func MakeChunk(voxels [][][]VoxelPointer) Chunk {
 	width, height, depth := len(voxels), len(voxels[0]), len(voxels[0][0])
-	chunk := &Chunk{
+	chunk := Chunk{
 		Voxels: make([]VoxelPointer, width*height*depth),
 		Width:  width,
 		Height: height,
@@ -57,10 +71,10 @@ func MakeChunk(voxels [][][]VoxelPointer) *Chunk {
 
 // World, stores chunks in a map
 type World struct {
-	Chunks map[[2]int]*Chunk
+	Chunks map[[2]int]Chunk
 }
 
 // Return a Chunk from the world
-func (w *World) GetChunk(x, y int) *Chunk {
+func (w *World) GetChunk(x, y int) Chunk {
 	return w.Chunks[[2]int{x, y}]
 }
