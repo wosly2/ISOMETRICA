@@ -59,6 +59,7 @@ func generateChunk(chunkWidth, chunkDepth, chunkHeight int, VDict VoxelDictionar
 	return chunk
 }
 
+// May not work 100% of the time
 func (chunk *Chunk) PlaceFlower(x, y int) (placed bool) {
 	placed = false
 	// move down until we hit a grass block that has have air above it
@@ -69,6 +70,29 @@ func (chunk *Chunk) PlaceFlower(x, y int) (placed bool) {
 				placed = true
 				break
 			}
+		}
+	}
+	return
+}
+
+// place a tree at the given position
+func (chunk *Chunk) PlaceTree(x, y int) (placed bool) {
+	placed = false
+	// move down until we hit a grass block that has have air above it
+	for z := chunk.Depth - 1; z >= 0; z-- {
+		if chunk.GetVoxel(x, y, z).Name == "Grass" {
+			// check if there is a 3x3x5 block of open air above centered above it
+			for x2 := x - 1; x2 <= x+1; x2++ {
+				for y2 := y - 1; y2 <= y+1; y2++ {
+					for z2 := z - 1; z2 <= z+1; z2++ {
+						if chunk.GetVoxel(x2, y2, z2).Name != "Air" {
+							return false
+						}
+					}
+				}
+			}
+			// place the leaves
+			// place the trunk
 		}
 	}
 	return
