@@ -3,10 +3,9 @@ package main
 import (
 	"image/color"
 	"log"
+	"time"
 
 	"fmt"
-
-	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -16,7 +15,9 @@ type Game struct {
 	Camera             [2]int
 	HasInitiatedUpdate bool
 	HasInitiatedDraw   bool
-	Delta              float32
+	Frames             int
+	SecondTimer        time.Time
+	ActualFPS          float32
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -39,7 +40,6 @@ func (game *Game) Update() error {
 }
 
 func (game *Game) Draw(screen *ebiten.Image) {
-	frameStart := time.Now().UnixMilli()
 	if !game.HasInitiatedDraw {
 		game.HasInitiatedDraw = true
 		game.Camera[0] = screen.Bounds().Dx() / 2
@@ -51,15 +51,25 @@ func (game *Game) Draw(screen *ebiten.Image) {
 	game.World.GetChunk(0, 0).Render(screen, game.Camera[0], game.Camera[1])
 	drawString(screen, "Isomicraft Indev", 0, 10)
 	drawString(screen, fmt.Sprintf("Camera: %d, %d", game.Camera[0], game.Camera[1]), 0, 22)
-	drawString(screen, fmt.Sprintf("FPS: %d", int(1/game.Delta)), 0, 34)
+	drawString(screen, fmt.Sprintf("FPS: %f", game.ActualFPS), 0, 34)
+	drawString(screen, fmt.Sprintf("TPS: %f", ebiten.ActualTPS()), 0, 46)
 
-	game.Delta = float32(time.Now().UnixMilli()-frameStart) / 1000
+	game.Frames++
+	if time.Since(game.SecondTimer).Seconds() >= 1 {
+		game.ActualFPS = float32(game.Frames)
+		game.Frames = 0
+		game.SecondTimer = time.Now()
+	}
+
 }
 
 func main() {
 	// init ebiten
 	initialWidth, initialHeight := 640, 480
 	ebiten.SetTPS(60)
+	// SetVsyncEnabled(false) is only for debug purposes
+	// It is greatly reccomended to use SetVsyncEnabled(true) in production
+	ebiten.SetVsyncEnabled(false)
 	ebiten.SetWindowSize(initialWidth, initialHeight)
 	ebiten.SetWindowTitle("Isometric Voxel Game")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
