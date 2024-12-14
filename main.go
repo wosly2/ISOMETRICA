@@ -3,7 +3,6 @@ package main
 import (
 	"image/color"
 	"log"
-	"math"
 	"math/rand"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 type Game struct {
 	World               World
 	Camera              [2]int
-	CameraOffset        [2]int
 	HasInitiatedUpdate  bool
 	HasInitiatedDraw    bool
 	Frames              int
@@ -27,9 +25,6 @@ type Game struct {
 	CurrentChunk        [2]int
 	ChunkSize           int
 	ChunkDepth          int
-	CameraScale         float64
-	CameraScaleTo       float64
-	BlocksOffscreen     *ebiten.Image
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -43,47 +38,6 @@ func (game *Game) Update() error {
 
 	// INPUT
 
-	// IMPORTANT: this following code (the camera zoom code) is from the Ebitengine example, which uses Apache 2.0 license
-	// I need to refactor the algorithm to be unique so I can so I don't have to add their license to my project
-	// and i want to understand it more
-	// https://github.com/hajimehoshi/ebiten/blob/main/examples/isometric/game.go
-
-	// ebitengine example code
-	// zoom camera
-	var scrollY float64
-	if ebiten.IsKeyPressed(ebiten.KeyC) || ebiten.IsKeyPressed(ebiten.KeyPageDown) {
-		scrollY = -0.25
-	} else if ebiten.IsKeyPressed(ebiten.KeyE) || ebiten.IsKeyPressed(ebiten.KeyPageUp) {
-		scrollY = .25
-	} else {
-		_, scrollY = ebiten.Wheel()
-		if scrollY < -1 {
-			scrollY = -1
-		} else if scrollY > 1 {
-			scrollY = 1
-		}
-	}
-	game.CameraScaleTo += scrollY * (game.CameraScaleTo / 7)
-
-	// ebitengine example code
-	// Clamp target zoom level.
-	if game.CameraScaleTo < 0.8 {
-		game.CameraScaleTo = 0.8
-	} else if game.CameraScaleTo > 5 {
-		game.CameraScaleTo = 5
-	}
-
-	// ebitengine example code
-	// Smooth zoom transition.
-	factor := math.Pow(10, 10)
-	div := 20.0
-	if game.CameraScaleTo > game.CameraScale {
-		game.CameraScale += math.Round(((game.CameraScaleTo-game.CameraScale)/div)*factor) / factor
-	} else if game.CameraScaleTo < game.CameraScale {
-		game.CameraScale -= math.Round(((game.CameraScale-game.CameraScaleTo)/div)*factor) / factor
-	}
-
-	// end of ebitengine example code
 	// camera movement
 	if ebiten.IsKeyPressed(ebiten.KeyW) {
 		game.Camera[1] += cameraMoveSensitivity
@@ -108,9 +62,9 @@ func (game *Game) Update() error {
 
 	// make camera move faster
 	if ebiten.IsKeyPressed(ebiten.KeyShiftLeft) {
-		cameraMoveSensitivity = int(math.Round(8 / game.CameraScale))
+		cameraMoveSensitivity = 8
 	} else {
-		cameraMoveSensitivity = int(math.Round(4 / game.CameraScale))
+		cameraMoveSensitivity = 4
 	}
 
 	// reload world
@@ -157,7 +111,6 @@ func (game *Game) Draw(screen *ebiten.Image) {
 
 	// render the chunks
 	var blocksRendered int
-	game.BlocksOffscreen = ebiten.NewImage(int(math.Round(float64(screen.Bounds().Dx())/game.CameraScale))+1, int(math.Round(float64(screen.Bounds().Dy())/game.CameraScale))+1)
 	for x := -1; x < 2; x++ {
 		for y := -1; y < 2; y++ {
 			chunk, exists := game.World.Chunks[[2]int{x + game.CurrentChunk[0], y + game.CurrentChunk[1]}]
@@ -167,12 +120,12 @@ func (game *Game) Draw(screen *ebiten.Image) {
 					x*game.ChunkSize,
 					y*game.ChunkSize,
 					0,
-					game.Camera[0]+game.CameraOffset[0],
-					game.Camera[1]+game.CameraOffset[1],
+					game.Camera[0],
+					game.Camera[1],
 					game.DepthShift,
 				)
 				// render
-				blocksRendered += chunk.Render(game.BlocksOffscreen, screenX, screenY, game.DepthShift)
+				blocksRendered += chunk.Render(screen, screenX, screenY, game.DepthShift)
 			} else {
 				// create chunk
 				log.Printf("Creating chunk at %d, %d ...", x+game.CurrentChunk[0], y+game.CurrentChunk[1])
@@ -181,16 +134,6 @@ func (game *Game) Draw(screen *ebiten.Image) {
 			}
 		}
 	}
-
-	// scale the rendered image
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Scale(game.CameraScale, game.CameraScale)
-	//op.GeoM.Translate(float64(screen.Bounds().Dx()/2-game.BlocksOffscreen.Bounds().Dx()/2), float64(screen.Bounds().Dy()/2-game.BlocksOffscreen.Bounds().Dy()/2))
-	screen.DrawImage(game.BlocksOffscreen, op)
-
-	// get the camera offset to center it back back what it was before we zoom/scaled it
-	//game.CameraOffset[0] = int(math.Round(float64(game.Camera[0]) / game.CameraScale))
-	//game.CameraOffset[1] = int(math.Round(float64(game.Camera[1]) / game.CameraScale))
 
 	// gui/text
 	drawString(screen, "Isomicraft Infdev", 0, 10)
@@ -235,8 +178,6 @@ func main() {
 		Seed:   4311080085,
 	}
 	game.World.Initalize(4311080085)
-	game.CameraScale = 1
-	game.CameraScaleTo = 1
 	log.Println("Done!")
 
 	// run the game
