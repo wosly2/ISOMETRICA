@@ -19,10 +19,16 @@ var defaultVoxelDictionary = VoxelDictionary{
 		{Name: "Wood", Atlas: groundTextureAtlas, Texture: [4]int{32, 32, 64, 64}},
 		{Name: "Leaves", Atlas: groundTextureAtlas, Texture: [4]int{64, 32, 96, 64}},
 		{Name: "Flower", Atlas: groundTextureAtlas, Texture: [4]int{96, 32, 128, 64}},
+		{Name: "Tall_Grass", Atlas: groundTextureAtlas, Texture: [4]int{0, 64, 32, 96}},
 	},
-	Transparent: []string{"Air", "Water", "Flower"},
-	Opaque:      []string{"Grass", "Sand", "Stone", "Dirt", "Wood", "Leaves"},
+	Transparent:          []string{"Air", "Water", "Flower"},
+	Opaque:               []string{"Grass", "Sand", "Stone", "Dirt", "Wood", "Leaves"},
+	TransparentNoCulling: []string{"Flower", "Tall_Grass"},
 }
 
-// general settings
-var cameraMoveSensitivity int = 4
+var errorVoxelDictionary = VoxelDictionary{
+	Voxels: []Voxel{
+		{Name: "Error", Atlas: groundTextureAtlas, Texture: [4]int{64, 96, 96, 128}},
+	},
+	Opaque: []string{"Error"},
+}
