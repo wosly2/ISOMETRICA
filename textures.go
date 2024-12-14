@@ -5,7 +5,7 @@ import (
 )
 
 // texture atlas
-var groundTextureAtlas, _, err = ebitenutil.NewImageFromFile("block_atlas.png")
+var groundTextureAtlas, _, gErr = ebitenutil.NewImageFromFile("block_atlas.png")
 
 // default voxel dictionary/lookup table
 var defaultVoxelDictionary = VoxelDictionary{

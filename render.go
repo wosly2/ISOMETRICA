@@ -34,18 +34,18 @@ func drawString(screen *ebiten.Image, output string, x, y int) {
 }
 
 // get the screen position of a voxel
-func getScreenPosition(x, y, z int, cameraX, cameraY int, depthShake float32) (screenX, screenY int) {
-	screenX = ((x - y) * tileWidth / 2) + cameraX
+func getScreenPosition(x, y, z int, cameraX, cameraY float32, depthShake float32) (screenX, screenY int) {
+	screenX = ((x - y) * tileWidth / 2) + int(cameraX)
 	// depth shake
 	if depthShake != 0 {
 		screenX += int(float32(depthShake) * float32(x+y) / 2)
 	}
-	screenY = ((x+y)*tileHeight/4 - z*tileHeight/2) + cameraY
+	screenY = ((x+y)*tileHeight/4 - z*tileHeight/2) + int(cameraY)
 	return
 }
 
 // render a chunk with a given camera position
-func (chunk Chunk) Render(screen *ebiten.Image, cameraX, cameraY int, depthShake float32) (blocksRendered int) {
+func (chunk Chunk) Render(screen *ebiten.Image, cameraX, cameraY float32, depthShake float32) (blocksRendered int) {
 	blocksRendered = 0
 	// iterate through voxels
 	for x := 0; x < chunk.Width; x++ {

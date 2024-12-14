@@ -139,9 +139,21 @@ type World struct {
 	PerlinNoise            *perlin.Perlin
 	WaterLevel             int
 	SurfaceFeaturesBeginAt int
+	ChunkSize              int
+	ChunkDepth             int
 }
 
 // Return a Chunk from the world
-func (w *World) GetChunk(x, y int) Chunk {
-	return w.Chunks[[2]int{x, y}]
+func (w *World) GetChunk(x, y int) (chunk Chunk, exists bool) {
+	chunk, exists = w.Chunks[[2]int{x, y}]
+	return
+}
+
+// return the voxel at x, y, z (global)
+func (w *World) GetVoxel(x, y, z int) (voxel Voxel, exists bool) {
+	chunk, exists := w.GetChunk(x/w.ChunkSize, y/w.ChunkSize)
+	if exists {
+		voxel = chunk.GetVoxel(x%w.ChunkSize, y%w.ChunkSize, z)
+	}
+	return
 }
