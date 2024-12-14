@@ -138,8 +138,8 @@ func (game *Game) Draw(screen *ebiten.Image) {
 	// gui/text
 	drawString(screen, "Isomicraft Infdev", 0, 10)
 	drawString(screen, fmt.Sprintf("Camera: %d, %d", game.Camera[0], game.Camera[1]), 0, 22)
-	drawString(screen, fmt.Sprintf("FPS: %f", game.ActualFPS), 0, 34)
-	drawString(screen, fmt.Sprintf("TPS: %f", ebiten.ActualTPS()), 0, 46)
+	drawString(screen, fmt.Sprintf("Focused Chunk: %d, %d", game.CurrentChunk[0], game.CurrentChunk[1]), 0, 34)
+	drawString(screen, fmt.Sprintf("FPS: %f TPS: %f", game.ActualFPS, ebiten.ActualTPS()), 0, 46)
 	drawString(screen, fmt.Sprintf("Blocks Rendered: %d", blocksRendered), 0, 58)
 
 	// frame control
