@@ -8,7 +8,7 @@ import (
 )
 
 // player texture atlas
-var playerTextureAtlas, _, pErr = ebitenutil.NewImageFromFile("player_atlas.png")
+var playerTextureAtlas, _, _ = ebitenutil.NewImageFromFile("player_atlas.png")
 
 // player texture map
 // player sprites are 32x48 pixels.
@@ -18,47 +18,33 @@ var playerTextureMap = map[string][4]int{
 
 // Player, contains information about a player.
 type Player struct {
-	Position [3]float32
-	Velocity [3]float32
-	Drag     [3]float32
+	Position Vec3
+	Velocity Vec3
+	Drag     Vec3
 	Texture  string
 }
 
 var Gravity float32 = 0.01
 
 func (player *Player) Update(world World) {
+	// drag
+	player.Velocity.X *= player.Drag.X
+	player.Velocity.Y *= player.Drag.Y
+	player.Velocity.Z *= player.Drag.Z
 
 	// move the player
-	player.Position[0] += player.Velocity[0]
-	player.Position[1] += player.Velocity[1]
-	player.Position[2] += player.Velocity[2]
-
-	// drag
-	player.Velocity[0] *= player.Drag[0]
-	player.Velocity[1] *= player.Drag[1]
-	player.Velocity[2] *= player.Drag[2]
+	player.Position.X += player.Velocity.X
+	player.Position.Y += player.Velocity.Y
+	player.Position.Z += player.Velocity.Z
 
 	// gravity
-	//player.Velocity[2] -= Gravity
-
-	// check if the player is on the ground (on top of a voxel)
-	var playerVoxelPosition = [3]int{int(player.Position[0]), int(player.Position[1]), int(player.Position[2])}
-	voxel, _ := world.GetVoxel(playerVoxelPosition[0], playerVoxelPosition[1], playerVoxelPosition[2])
-	if voxel.Name != "Air" {
-		player.Velocity[2] = 0 // stop falling
-		// move the player to the top of the ground voxel
-		player.Position[2] = float32(playerVoxelPosition[2])
-	}
+	//player.Velocity.Z -= Gravity
 }
 
-// get screen position of the player
+// get screen position of the player regardless of camera position
 func (player *Player) getScreenPosition(depthShake float32) (screenX, screenY float32) {
-	screenX = ((player.Position[0] - player.Position[1]) * float32(tileWidth) / 2)
-	// depth shake
-	if depthShake != 0 {
-		screenX += (float32(depthShake) * float32(player.Position[0]+player.Position[1]) / 2)
-	}
-	screenY = ((player.Position[0]+player.Position[1])*float32(tileHeight)/4 - (player.Position[2] * float32(tileHeight) / 2))
+	screenX = ((player.Position.X - player.Position.Y) * float32(tileWidth) / 2) + float32(tileWidth/2)
+	screenY = ((player.Position.X+player.Position.Y)*float32(tileHeight)/4 - (player.Position.Z * float32(tileHeight) / 2)) + float32(tileHeight/2)
 	return
 }
 

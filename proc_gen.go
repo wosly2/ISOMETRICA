@@ -15,10 +15,10 @@ func pseudoRandomTangent(x float64) float64 {
 func (world *World) Initalize(seed int64) {
 	world.Seed = seed
 	world.PerlinNoise = perlin.NewPerlin(
-		float64(50+rand.Intn(20))/100,  // Persistence
-		float64(100+rand.Intn(50))/100, // Lacunarity
-		3,                              // Octaves
-		world.Seed,                     // Seed
+		float64(50+rand.Intn(20))/100, // Persistence
+		float64(rand.Intn(50))/100,    // Lacunarity
+		3,                             // Octaves
+		world.Seed,                    // Seed
 	)
 	world.SurfaceFeaturesBeginAt = 10
 	world.WaterLevel = 5 + world.SurfaceFeaturesBeginAt
@@ -82,6 +82,9 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 				// ocean sand
 				if z == world.SurfaceFeaturesBeginAt+2 && chunk.GetVoxel(x, y, z+1).Name == "Water" && chunk.GetVoxel(x, y, z).Name != "Water" {
 					chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 3})
+				}
+				if chunk.GetVoxel(x, y, z).Name == "Dirt" && chunk.GetVoxel(x, y, z+1).Name == "Water" {
+					chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Sand"))
 				}
 			}
 		}
