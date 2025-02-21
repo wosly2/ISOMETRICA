@@ -37,18 +37,23 @@ func (font *Font) loadGlyph(char string) (subImage *ebiten.Image) {
 
 // render a string
 func (font *Font) renderString(screen *ebiten.Image, text string, x, y int, color color.Color) {
+	var (
+		xx = x
+		yy = y
+	)
+
 	for _, char := range text {
 		if char == '\n' {
-			x = 0
-			y += font.CharSize[1] + font.NewlinePad
+			xx = x
+			yy += font.CharSize[1] + font.NewlinePad
 			continue
 		}
 		glyph := font.loadGlyph(string(char))
 		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(float64(x), float64(y))
+		op.GeoM.Translate(float64(xx), float64(yy))
 		op.ColorM.ScaleWithColor(color)
 		screen.DrawImage(glyph, op)
-		x += font.CharWidths[strings.Index(font.CharSet, string(char))] + font.LetterPad
+		xx += font.CharWidths[strings.Index(font.CharSet, string(char))] + font.LetterPad
 	}
 }
 
@@ -75,6 +80,6 @@ func newFont(path string, gridWidth int, charSet string, charWidths []int) (font
 }
 
 // load the isometrica font
-var isometricaFont = newFont("font_atlas.png", 10, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\^_`abcdefghijklmnopqrstuvwxyz{}|~", []int{
+var isometricaFont = newFont("assets/font_atlas.png", 10, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\^_`abcdefghijklmnopqrstuvwxyz{}|~", []int{
 	3, 1, 3, 5, 5, 5, 5, 1, 2, 2, 3, 3, 1, 3, 1, 5, 5, 3, 5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 3, 3, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 5, 3, 3, 2, 5, 5, 4, 5, 5, 5, 5, 5, 1, 4, 4, 3, 5, 4, 4, 5, 5, 4, 4, 4, 5, 3, 5, 3, 4, 4, 3, 3, 1, 4,
 })

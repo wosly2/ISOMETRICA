@@ -7,7 +7,7 @@ import (
 )
 
 // texture atlas
-var groundTextureAtlas, _, _ = ebitenutil.NewImageFromFile("block_atlas.png")
+var groundTextureAtlas, _, _ = ebitenutil.NewImageFromFile("assets/block_atlas.png")
 
 // default voxel dictionary/lookup table
 var defaultVoxelDictionary = VoxelDictionary{
@@ -22,6 +22,11 @@ var defaultVoxelDictionary = VoxelDictionary{
 		{Name: "Leaves", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{64, 32}, Max: image.Point{96, 64}}},
 		{Name: "Flower", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{96, 32}, Max: image.Point{128, 64}}},
 		{Name: "Tall_Grass", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{0, 64}, Max: image.Point{32, 96}}},
+		{Name: "Cobblestone", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{32, 64}, Max: image.Point{64, 96}}},
+		{Name: "Snowy_Grass", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{64, 64}, Max: image.Point{96, 96}}},
+		{Name: "Snowy_Leaves", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{96, 64}, Max: image.Point{128, 96}}},
+		{Name: "Snowy_Tall_Grass", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{0, 96}, Max: image.Point{32, 128}}},
+		{Name: "Snowy_Flower", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{32, 96}, Max: image.Point{64, 128}}},
 	},
 	Transparent:          []string{"Air", "Water", "Flower"},
 	Opaque:               []string{"Grass", "Sand", "Stone", "Dirt", "Wood", "Leaves"},

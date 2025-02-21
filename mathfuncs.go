@@ -28,7 +28,7 @@ func (v Vec3) Normalize() Vec3 {
 
 // rounds a number to the nearest multiple of `a`
 func roundNArepeat(n, a int) int {
-	remainder := n & (a - 1) // a % 2^k is equivalent to n & (a - 1)
+	remainder := n % a
 	if remainder < a/2 {
 		return n - remainder
 	}

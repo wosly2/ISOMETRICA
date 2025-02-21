@@ -3,7 +3,6 @@ package main
 import (
 	"image/color"
 	"log"
-
 	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -16,7 +15,7 @@ const tileHeight int = 32
 // init the rendering system
 func initRender() {
 	var err error
-	groundTextureAtlas, _, err = ebitenutil.NewImageFromFile("block_atlas.png")
+	groundTextureAtlas, _, err = ebitenutil.NewImageFromFile("assets/block_atlas.png")
 	if err != nil {
 		log.Fatal(err)
 	}

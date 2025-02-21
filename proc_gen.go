@@ -7,6 +7,15 @@ import (
 	"github.com/aquilax/go-perlin"
 )
 
+// TODO: create biome implementationing using:
+//       - worley noise or voronoi i guess
+//       - create a biome map like the perlin one
+
+// What i have now:
+// Biome is based directly on perlin noise terrain map height.
+// Why this is bad: it relys on the terrain map to generate the biomes,
+// which does not allow me to create biomes that exist at the same height
+
 func pseudoRandomTangent(x float64) float64 {
 	return math.Tan(x*12.9898) - math.Floor(math.Tan(x*12.9898))
 }
@@ -51,9 +60,12 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 				// log.Printf("Chunk size: %d, %d\n", chunkWidth, chunkHeight)
 				// log.Printf("Global position: %d, %d\n", (position[0]*chunkWidth)+x, (position[1]*chunkHeight)+y)
 				var scale float64 = .02
-				noiseValue := world.PerlinNoise.Noise2D(float64(position[0]*chunkWidth+x)*scale, float64(position[1]*chunkHeight+y)*scale) * 6
+				noiseValue := world.PerlinNoise.Noise2D(float64(position[0]*chunkWidth+x)*scale, float64(position[1]*chunkHeight+y)*scale) * 10
 				if noiseValue < float64(world.WaterLevel) {
-					noiseValue *= 1.5
+					noiseValue *= 2
+				}
+				if noiseValue > 30 {
+					noiseValue *= 2
 				}
 
 				// set to air by default
@@ -64,14 +76,24 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 					chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 2})
 				}
 
-				// fill with dirt up noise value
+				// fill with dirt/sand up noise value
 				if z <= world.SurfaceFeaturesBeginAt+int(noiseValue)+2 {
-					chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 5})
+					if z < 16 { // beach biome
+						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Sand"))
+					} else { // plains and mountains biome
+						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Dirt"))
+					}
 				}
 
 				// fill with grass
 				if z == world.SurfaceFeaturesBeginAt+int(noiseValue)+2 && world.SurfaceFeaturesBeginAt+int(noiseValue)+2 >= world.WaterLevel {
-					chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 1})
+					if z < 16 { // beach biome
+						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Sand"))
+					} else if z >= 16 && z < 28 { // plains biome
+						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Grass"))
+					} else { // mountains biome
+						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Snowy_Grass"))
+					}
 				}
 
 				// fill with stone up to a point
@@ -136,22 +158,26 @@ func (chunk *Chunk) PlaceDecoration(x, y int, decoration, placesOn VoxelPointer)
 func (chunk *Chunk) PlaceTree(x, y int) (placed bool) {
 	// move down until we hit a grass block that has have air above it
 	for z := chunk.Depth - 1; z >= 0; z-- {
-		if chunk.GetVoxel(x, y, z).Name == "Grass" {
+		if chunk.GetVoxel(x, y, z).Name == "Grass" || chunk.GetVoxel(x, y, z).Name == "Snowy_Grass" {
 			// check if there is air above it
 			if chunk.GetVoxel(x, y, z+1).Name != "Air" {
 				return false
 			}
 
 			// leaves motherfucka
+			leaves := "Leaves"
+			if chunk.GetVoxel(x, y, z).Name == "Snowy_Grass" {
+				leaves = "Snowy_Leaves"
+			}
 			for x2 := x - 1; x2 < x+2; x2++ {
 				for y2 := y - 1; y2 < y+2; y2++ {
-					chunk.SetVoxel(x2, y2, z+4, defaultVoxelDictionary.GetVoxelPointerTo("Leaves"))
+					chunk.SetVoxel(x2, y2, z+4, defaultVoxelDictionary.GetVoxelPointerTo(leaves))
 					if math.Abs(float64(x2-x)) != math.Abs(float64(y2-y)) {
-						chunk.SetVoxel(x2, y2, z+5, defaultVoxelDictionary.GetVoxelPointerTo("Leaves"))
+						chunk.SetVoxel(x2, y2, z+5, defaultVoxelDictionary.GetVoxelPointerTo(leaves))
 					}
 				}
 			}
-			chunk.SetVoxel(x, y, z+5, defaultVoxelDictionary.GetVoxelPointerTo("Leaves")) // top middle leaf
+			chunk.SetVoxel(x, y, z+5, defaultVoxelDictionary.GetVoxelPointerTo(leaves)) // top middle leaf
 
 			// place the trunk
 			for z2 := z + 1; z2 <= z+4; z2++ {

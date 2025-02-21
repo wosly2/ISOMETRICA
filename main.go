@@ -2,13 +2,23 @@ package main
 
 import (
 	"log"
+	"math/rand/v2"
+	"net/http"
 	"time"
 	"unsafe"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"net/http"
 	_ "net/http/pprof"
+)
+
+// represents the current game state
+type GameState int
+
+const (
+	GAMESTATE_TITLE GameState = 2
+	GAMESTATE_MENU  GameState = 1
+	GAMESTATE_GAME  GameState = 0
 )
 
 type Game struct {
@@ -30,6 +40,7 @@ type Game struct {
 	DebugMode           bool
 	ScreenX             int
 	ScreenY             int
+	GameState           GameState
 }
 
 // MapSize returns the size of a map in bytes.
@@ -50,7 +61,7 @@ func MapSize[K comparable, V any](m map[K]V) uintptr {
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return 640, 480
+	return 640, (640 * outsideHeight) / outsideWidth
 }
 
 func main() {
@@ -65,6 +76,7 @@ func main() {
 		CurrentChunk:       [2]int{0, 0},
 		ChunkSize:          32,
 		ChunkDepth:         64,
+		GameState:          GAMESTATE_TITLE,
 	}
 
 	// init ebiten
@@ -80,16 +92,24 @@ func main() {
 	// init render
 	initRender()
 
-	// init world
-	log.Println("World initializing ...")
-	game.World = World{
-		Chunks:     make(map[[2]int]Chunk),
-		Seed:       4311080085,
-		ChunkSize:  32,
-		ChunkDepth: 64,
-		SavePath:   "save/demo",
+	// check if there is a save file at the save path
+	savePath := "save/demo"
+	world, err := readWorld(savePath)
+	if err != nil {
+		log.Printf("Failed to load world: %v", err)
+		// create new world
+		log.Println("Creating new world ...")
+		game.World = World{
+			Chunks:     make(map[[2]int]Chunk),
+			ChunkSize:  32,
+			ChunkDepth: 64,
+			SavePath:   "save/demo",
+		}
+		game.World.Initalize(rand.Int64())
+	} else {
+		log.Println("Loading world from file.")
+		game.World = world
 	}
-	game.World.Initalize(4311080085)
 
 	// init player
 	game.Player = Player{

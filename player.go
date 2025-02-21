@@ -8,7 +8,7 @@ import (
 )
 
 // player texture atlas
-var playerTextureAtlas, _, _ = ebitenutil.NewImageFromFile("player_atlas.png")
+var playerTextureAtlas, _, _ = ebitenutil.NewImageFromFile("assets/player_atlas.png")
 
 // player texture map
 // player sprites are 32x48 pixels.

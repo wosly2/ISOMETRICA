@@ -279,7 +279,6 @@ func readWorld(savePath string) (world World, err error) {
 	// open the file
 	file, err := os.Open(filepath.Join(savePath, "world.json"))
 	if err != nil {
-		log.Printf("ERROR: Failed to open world: %v", err)
 		return
 	}
 
@@ -290,7 +289,6 @@ func readWorld(savePath string) (world World, err error) {
 	var worldJSON WorldJSON
 	err = decoder.Decode(&worldJSON)
 	if err != nil {
-		log.Printf("ERROR: Failed to parse world: %v", err)
 		return
 	}
 
