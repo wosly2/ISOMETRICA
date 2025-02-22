@@ -13,7 +13,7 @@ var playerTextureAtlas, _, _ = ebitenutil.NewImageFromFile("assets/player_atlas.
 // player texture map
 // player sprites are 32x48 pixels.
 var playerTextureMap = map[string][4]int{
-	"Default": [4]int{0, 0, 32, 48},
+	"Default": {0, 0, 32, 48},
 }
 
 // Player, contains information about a player.

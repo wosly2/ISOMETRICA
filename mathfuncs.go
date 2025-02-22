@@ -26,22 +26,22 @@ func (v Vec3) Normalize() Vec3 {
 	}
 }
 
-// rounds a number to the nearest multiple of `a`
-func roundNArepeat(n, a int) int {
-	remainder := n % a
-	if remainder < a/2 {
-		return n - remainder
-	}
-	return n + (a - remainder)
-}
+// // rounds a number to the nearest multiple of `a`
+// func roundNArepeat(n, a int) int {
+// 	remainder := n % a
+// 	if remainder < a/2 {
+// 		return n - remainder
+// 	}
+// 	return n + (a - remainder)
+// }
 
-// rounds a number to either 0 or `a` (no multiples)
-func roundNA(n, a int) int {
-	if n >= a/2 {
-		return a
-	}
-	return 0
-}
+// // rounds a number to either 0 or `a` (no multiples)
+// func roundNA(n, a int) int {
+// 	if n >= a/2 {
+// 		return a
+// 	}
+// 	return 0
+// }
 
 func pointsMakeCCWTurn(A, B, C Vec2i) bool {
 	return (B.X-A.X)*(C.Y-A.Y) > (C.X-A.X)*(B.Y-A.Y)

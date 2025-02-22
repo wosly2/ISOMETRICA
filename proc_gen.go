@@ -7,18 +7,98 @@ import (
 	"github.com/aquilax/go-perlin"
 )
 
-// TODO: create biome implementationing using:
-//       - worley noise or voronoi i guess
-//       - create a biome map like the perlin one
+// VORONOI BIOME SYSTEM
+// based on this POC: https://github.com/wosly2/py-chunked-voronoi/blob/main/main.py (my own code)
 
-// What i have now:
-// Biome is based directly on perlin noise terrain map height.
-// Why this is bad: it relys on the terrain map to generate the biomes,
-// which does not allow me to create biomes that exist at the same height
-
-func pseudoRandomTangent(x float64) float64 {
-	return math.Tan(x*12.9898) - math.Floor(math.Tan(x*12.9898))
+type Biome struct {
+	Name string
 }
+
+var biomes []Biome = []Biome{
+	{"Plains"},
+	{"Snowy"},
+	{"Forest"},
+	//Biome{"Mountains"},
+	{"Desert"},
+}
+
+type VoronoiPoint struct {
+	ChunkX, ChunkY int
+	X, Y           int
+	Biome          *Biome
+}
+
+var VoronoiCache map[[2]int]VoronoiPoint
+
+// gets the Voronoi point located in an arbitrary chunk
+func getVoronoiPoint(chunkX, chunkY int) VoronoiPoint {
+	// check if we have a cached point
+	if VoronoiCache != nil {
+		if cachedPoint, ok := VoronoiCache[[2]int{chunkX, chunkY}]; ok {
+			return cachedPoint
+		}
+	}
+
+	// seed the rng on chunk pos
+	vrand := rand.New(rand.NewSource(int64(chunkX + chunkY)))
+
+	point := VoronoiPoint{
+		ChunkX: chunkX,
+		ChunkY: chunkY,
+		X:      vrand.Intn(32),
+		Y:      vrand.Intn(32),
+		Biome:  &biomes[vrand.Intn(len(biomes))],
+	}
+
+	// cache the point
+	if VoronoiCache == nil {
+		VoronoiCache = make(map[[2]int]VoronoiPoint)
+	}
+	VoronoiCache[[2]int{chunkX, chunkY}] = point
+
+	// return seeded point
+	return point
+}
+
+// gets the nearest Voronoi point at an arbitrary position
+func getNearestVoronoiPoint(chunkX, chunkY, localX, localY int) VoronoiPoint {
+	// convert x, y to global positions
+	globalX := chunkX*32 + localX
+	globalY := chunkY*32 + localY
+
+	// get a list of vpoints in moore neighborhood of chunks
+	var vPoints []VoronoiPoint
+	for x := chunkX - 1; x <= chunkX+1; x++ {
+		for y := chunkY - 1; y <= chunkY+1; y++ {
+			vPoints = append(vPoints, getVoronoiPoint(x, y))
+		}
+	}
+
+	// get the closest vpoint
+	minDistance := math.MaxFloat64
+	var closestVoronoiPoint VoronoiPoint
+	for _, vPoint := range vPoints {
+		// euclidean distance
+		distance := math.Sqrt(math.Pow(float64(globalX-vPoint.X), 2) + math.Pow(float64(globalY-vPoint.Y), 2))
+		// update closest
+		if distance < minDistance {
+			minDistance = distance
+			closestVoronoiPoint = vPoint
+		}
+	}
+
+	return closestVoronoiPoint
+}
+
+// get the biome at a given position
+func getBiome(chunkX, chunkY, localX, localY int) *Biome {
+	return getNearestVoronoiPoint(chunkX, chunkY, localX, localY).Biome
+}
+
+// idk why this is here
+// func pseudoRandomTangent(x float64) float64 {
+// 	return math.Tan(x*12.9898) - math.Floor(math.Tan(x*12.9898))
+// }
 
 // initalize a world with things like random seed and perlin noise
 func (world *World) Initalize(seed int64) {
@@ -54,19 +134,17 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 			for z := 0; z < chunkDepth; z++ {
 
 				// get the noise value at this position
-				// log.Print("POSITION DEBUG :(")
-				// log.Printf("Local position: %d, %d\n", x, y)
-				// log.Printf("Chunk position: %d, %d\n", position[0], position[1])
-				// log.Printf("Chunk size: %d, %d\n", chunkWidth, chunkHeight)
-				// log.Printf("Global position: %d, %d\n", (position[0]*chunkWidth)+x, (position[1]*chunkHeight)+y)
 				var scale float64 = .02
 				noiseValue := world.PerlinNoise.Noise2D(float64(position[0]*chunkWidth+x)*scale, float64(position[1]*chunkHeight+y)*scale) * 10
-				if noiseValue < float64(world.WaterLevel) {
+				if z < world.WaterLevel { // makes underwater topography steeper
 					noiseValue *= 2
 				}
-				if noiseValue > 30 {
+				if z > 30 { // "mountains"
 					noiseValue *= 2
 				}
+
+				// get the biome at this position
+				biome := getBiome(position[0], position[1], x, y)
 
 				// set to air by default
 				chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 0})
@@ -78,22 +156,34 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 
 				// fill with dirt/sand up noise value
 				if z <= world.SurfaceFeaturesBeginAt+int(noiseValue)+2 {
-					if z < 16 { // beach biome
-						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Sand"))
-					} else { // plains and mountains biome
-						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Dirt"))
+					var dirtBlock string
+
+					if biome.Name == "Snowy" || biome.Name == "Plains" || biome.Name == "Forest" {
+						dirtBlock = "Dirt"
+					} else if biome.Name == "Mountains" {
+						dirtBlock = "Stone"
+					} else if biome.Name == "Desert" {
+						dirtBlock = "Sand"
 					}
+
+					chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo(dirtBlock))
 				}
 
 				// fill with grass
 				if z == world.SurfaceFeaturesBeginAt+int(noiseValue)+2 && world.SurfaceFeaturesBeginAt+int(noiseValue)+2 >= world.WaterLevel {
-					if z < 16 { // beach biome
-						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Sand"))
-					} else if z >= 16 && z < 28 { // plains biome
-						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Grass"))
-					} else { // mountains biome
-						chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Snowy_Grass"))
+					var grassBlock string
+
+					if biome.Name == "Snowy" {
+						grassBlock = "Snowy_Grass"
+					} else if biome.Name == "Mountains" {
+						grassBlock = "Stone"
+					} else if biome.Name == "Desert" {
+						grassBlock = "Sand"
+					} else {
+						grassBlock = "Grass"
 					}
+
+					chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo(grassBlock))
 				}
 
 				// fill with stone up to a point
@@ -115,14 +205,34 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 	// decorations
 	for x := 0; x < chunkWidth; x++ {
 		for y := 0; y < chunkHeight; y++ {
+			biome := getBiome(position[0], position[1], x, y)
+
+			var grassBlock string
+			var flowerBlock string
+			var grassDecoBlock string
+
+			if biome.Name == "Snowy" {
+				grassBlock = "Snowy_Grass"
+				flowerBlock = "Snowy_Flower"
+				grassDecoBlock = "Snowy_Tall_Grass"
+			} else if biome.Name == "Desert" {
+				grassBlock = "Sand"
+			} else if biome.Name == "Mountains" {
+				grassBlock = "Stone"
+			} else {
+				grassBlock = "Grass"
+				flowerBlock = "Flower"
+				grassDecoBlock = "Tall_Grass"
+			}
+
 			// grass
-			if rand.Intn(2) == 0 {
-				chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo("Tall_Grass"), defaultVoxelDictionary.GetVoxelPointerTo("Grass"))
+			if rand.Intn(2) == 0 && biome.Name != "Desert" && biome.Name != "Mountains" {
+				chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo(grassDecoBlock), defaultVoxelDictionary.GetVoxelPointerTo(grassBlock))
 			}
 
 			// flowers
-			if rand.Intn(5) == 0 {
-				chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo("Flower"), defaultVoxelDictionary.GetVoxelPointerTo("Grass"))
+			if rand.Intn(5) == 0 && biome.Name != "Desert" && biome.Name != "Mountains" {
+				chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo(flowerBlock), defaultVoxelDictionary.GetVoxelPointerTo(grassBlock))
 			}
 
 			// trees
