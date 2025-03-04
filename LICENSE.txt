@@ -1,0 +1,19 @@
+Hi there! If you're snooping around you might as well read this so you don't get sued.
+
+Copyright 2025 Sawyer Jackson / SOYPACKET
+
+You (the user) are free to:
+  - view and modify the source code of the software (all code and documentation contained within it).
+  - create and distribute modifications (mods) of the code THAT:
+    - depend on the base code of the software to run.
+    - provide meaningfull ADDITIONS to the software rather than repackage or copy it (this includes all standalone distributions of the software).
+
+You may not:
+  - redistribute the source code or compiled versions in ANY FORMAT without express written permission by ME, the author.
+  - sell or otherwise commercially exploit the base software or any modifications derived from it.
+  - use the software's name, branding, or assets for ANY commercial purpose.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
