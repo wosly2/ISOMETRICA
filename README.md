@@ -1,5 +1,1 @@
-# isometrica
-
-yo its the funny little block game!
-
-certified bugs included
+isometrica is a work in progress 2.5 voxel sandbox game.
