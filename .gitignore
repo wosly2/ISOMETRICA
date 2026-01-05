@@ -21,7 +21,5 @@
 go.work
 /.vscode
 .DS_Store
-.DS_Store
-save/demo/world.json
-save/demo/world.json
-.DS_Store
+save/demo
+out.love

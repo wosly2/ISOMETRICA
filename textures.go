@@ -27,6 +27,7 @@ var defaultVoxelDictionary = VoxelDictionary{
 		{Name: "Snowy_Leaves", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{96, 64}, Max: image.Point{128, 96}}},
 		{Name: "Snowy_Tall_Grass", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{0, 96}, Max: image.Point{32, 128}}},
 		{Name: "Snowy_Flower", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{32, 96}, Max: image.Point{64, 128}}},
+		{Name: "Cactus", Atlas: groundTextureAtlas, TextureRect: image.Rectangle{Min: image.Point{64, 128}, Max: image.Point{96, 160}}},
 	},
 	Transparent:          []string{"Air", "Water", "Flower", "Snowy_Flower"},
 	Opaque:               []string{"Grass", "Sand", "Stone", "Dirt", "Wood", "Leaves"},

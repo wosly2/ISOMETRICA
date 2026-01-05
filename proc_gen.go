@@ -8,19 +8,18 @@ import (
 )
 
 // VORONOI BIOME SYSTEM
-// based on this POC: https://github.com/wosly2/py-chunked-voronoi/blob/main/main.py (my own code)
 
-type Biome struct {
-	Name string
-}
+type Biome int
 
-var biomes []Biome = []Biome{
-	{"Plains"},
-	{"Snowy"},
-	{"Forest"},
-	//Biome{"Mountains"},
-	{"Desert"},
-}
+const (
+	BiomePlains Biome = iota
+	BiomeForest
+	BiomeDesert
+	BiomeSnowy
+	BiomeMountain
+)
+
+var biomes []Biome = []Biome{BiomePlains, BiomeForest, BiomeDesert, BiomeSnowy /*BiomeMountain*/}
 
 type VoronoiPoint struct {
 	ChunkX, ChunkY int
@@ -75,15 +74,20 @@ func getNearestVoronoiPoint(chunkX, chunkY, localX, localY int) VoronoiPoint {
 	}
 
 	// get the closest vpoint
-	minDistance := math.MaxFloat64
+	minDistance := math.MaxInt
 	var closestVoronoiPoint VoronoiPoint
-	for _, vPoint := range vPoints {
-		// euclidean distance
-		distance := math.Sqrt(math.Pow(float64(globalX-vPoint.X), 2) + math.Pow(float64(globalY-vPoint.Y), 2))
+	for _, v := range vPoints {
+
+		// // euclidean distance
+		// distance := math.Sqrt(math.Pow(float64(globalX-v.X), 2) + math.Pow(float64(globalY-v.Y), 2))
+
+		// taxicab distance
+		distance := absi(globalX-v.X) + absi(globalY-v.Y)
+
 		// update closest
 		if distance < minDistance {
 			minDistance = distance
-			closestVoronoiPoint = vPoint
+			closestVoronoiPoint = v
 		}
 	}
 
@@ -92,6 +96,10 @@ func getNearestVoronoiPoint(chunkX, chunkY, localX, localY int) VoronoiPoint {
 
 // get the biome at a given position
 func getBiome(chunkX, chunkY, localX, localY int) *Biome {
+	// TODO:
+	// i can also apply arbitrary transformations to the biome here,
+	// like adjusting for height or temperature or anything
+	// the voronoi diagram by itself isnt that good looking
 	return getNearestVoronoiPoint(chunkX, chunkY, localX, localY).Biome
 }
 
@@ -100,8 +108,8 @@ func getBiome(chunkX, chunkY, localX, localY int) *Biome {
 // 	return math.Tan(x*12.9898) - math.Floor(math.Tan(x*12.9898))
 // }
 
-// initalize a world with things like random seed and perlin noise
-func (world *World) Initalize(seed int64) {
+// initialize a world with things like random seed and perlin noise
+func (world *World) Initialize(seed int64) {
 	world.Seed = seed
 	world.PerlinNoise = perlin.NewPerlin(
 		float64(50+rand.Intn(20))/100, // Persistence
@@ -111,6 +119,10 @@ func (world *World) Initalize(seed int64) {
 	)
 	world.SurfaceFeaturesBeginAt = 10
 	world.WaterLevel = 5 + world.SurfaceFeaturesBeginAt
+
+	world.Chunks = make(map[[2]int]Chunk)
+	world.ChunkSize = 32
+	world.ChunkDepth = 64
 }
 
 // generate a procedurally generated chunk
@@ -136,33 +148,35 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 				// get the noise value at this position
 				var scale float64 = .02
 				noiseValue := world.PerlinNoise.Noise2D(float64(position[0]*chunkWidth+x)*scale, float64(position[1]*chunkHeight+y)*scale) * 10
-				if z < world.WaterLevel { // makes underwater topography steeper
-					noiseValue *= 2
-				}
-				if z > 30 { // "mountains"
-					noiseValue *= 2
-				}
+				// FIXME: the idea is good but something is broken here
+				// if z < world.WaterLevel { // makes underwater topography steeper
+				// 	noiseValue *= 2
+				// }
+				// if z > 30 { // "mountains"
+				// 	noiseValue *= 2
+				// }
 
 				// get the biome at this position
 				biome := getBiome(position[0], position[1], x, y)
 
 				// set to air by default
-				chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 0})
+				chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Air"))
 
 				// fill with water up to the water level
 				if z <= world.WaterLevel {
-					chunk.SetVoxel(x, y, z, VoxelPointer{VoxelDictionary: &VDict, Index: 2})
+					chunk.SetVoxel(x, y, z, defaultVoxelDictionary.GetVoxelPointerTo("Water"))
 				}
 
 				// fill with dirt/sand up noise value
 				if z <= world.SurfaceFeaturesBeginAt+int(noiseValue)+2 {
 					var dirtBlock string
 
-					if biome.Name == "Snowy" || biome.Name == "Plains" || biome.Name == "Forest" {
+					switch *biome {
+					case BiomeSnowy, BiomePlains, BiomeForest:
 						dirtBlock = "Dirt"
-					} else if biome.Name == "Mountains" {
+					case BiomeMountain:
 						dirtBlock = "Stone"
-					} else if biome.Name == "Desert" {
+					case BiomeDesert:
 						dirtBlock = "Sand"
 					}
 
@@ -173,13 +187,14 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 				if z == world.SurfaceFeaturesBeginAt+int(noiseValue)+2 && world.SurfaceFeaturesBeginAt+int(noiseValue)+2 >= world.WaterLevel {
 					var grassBlock string
 
-					if biome.Name == "Snowy" {
+					switch *biome {
+					case BiomeSnowy:
 						grassBlock = "Snowy_Grass"
-					} else if biome.Name == "Mountains" {
+					case BiomeMountain:
 						grassBlock = "Stone"
-					} else if biome.Name == "Desert" {
+					case BiomeDesert:
 						grassBlock = "Sand"
-					} else {
+					default:
 						grassBlock = "Grass"
 					}
 
@@ -211,33 +226,40 @@ func (world *World) generateChunk(position [2]int, chunkWidth, chunkHeight, chun
 			var flowerBlock string
 			var grassDecoBlock string
 
-			if biome.Name == "Snowy" {
+			switch *biome {
+			case BiomeSnowy:
 				grassBlock = "Snowy_Grass"
 				flowerBlock = "Snowy_Flower"
 				grassDecoBlock = "Snowy_Tall_Grass"
-			} else if biome.Name == "Desert" {
+			case BiomeDesert:
 				grassBlock = "Sand"
-			} else if biome.Name == "Mountains" {
+			case BiomeMountain:
 				grassBlock = "Stone"
-			} else {
+			default:
 				grassBlock = "Grass"
 				flowerBlock = "Flower"
 				grassDecoBlock = "Tall_Grass"
 			}
 
 			// grass
-			if rand.Intn(2) == 0 && biome.Name != "Desert" && biome.Name != "Mountains" {
-				chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo(grassDecoBlock), defaultVoxelDictionary.GetVoxelPointerTo(grassBlock))
+			if rand.Intn(2) == 0 && *biome != BiomeDesert && *biome != BiomeMountain {
+				if (*biome == BiomeSnowy && rand.Intn(2) == 0) || *biome != BiomeSnowy { // grass is rarer in snowy biomes
+					chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo(grassDecoBlock), defaultVoxelDictionary.GetVoxelPointerTo(grassBlock))
+				}
 			}
 
 			// flowers
-			if rand.Intn(5) == 0 && biome.Name != "Desert" && biome.Name != "Mountains" {
+			if rand.Intn(5) == 0 && *biome != BiomeDesert && *biome != BiomeMountain && *biome != BiomeSnowy {
 				chunk.PlaceDecoration(x, y, defaultVoxelDictionary.GetVoxelPointerTo(flowerBlock), defaultVoxelDictionary.GetVoxelPointerTo(grassBlock))
 			}
 
 			// trees
 			if rand.Intn(50) == 0 {
 				chunk.PlaceTree(x, y)
+			}
+
+			if rand.Intn(200) == 0 {
+				chunk.PlaceCactus(x, y)
 			}
 		}
 	}
@@ -294,6 +316,26 @@ func (chunk *Chunk) PlaceTree(x, y int) (placed bool) {
 				chunk.SetVoxel(x, y, z2, defaultVoxelDictionary.GetVoxelPointerTo("Wood"))
 			}
 			return true
+		}
+	}
+	return false
+}
+
+// place cactus
+// place a tree at the given position
+func (chunk *Chunk) PlaceCactus(x, y int) (placed bool) {
+	// move down until we hit a sand block that has have air above it
+	for z := chunk.Depth - 1; z >= 0; z-- {
+		if chunk.GetVoxel(x, y, z).Name == "Sand" {
+			// check if there is air above it
+			if chunk.GetVoxel(x, y, z+1).Name != "Air" {
+				return false
+			}
+
+			// place the cactus body
+			chunk.SetVoxel(x, y, z+1, defaultVoxelDictionary.GetVoxelPointerTo("Cactus"))
+			chunk.SetVoxel(x, y, z+2, defaultVoxelDictionary.GetVoxelPointerTo("Cactus"))
+			chunk.SetVoxel(x, y, z+3, defaultVoxelDictionary.GetVoxelPointerTo("Cactus"))
 		}
 	}
 	return false

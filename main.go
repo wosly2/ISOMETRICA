@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand/v2"
 	"net/http"
+	"path/filepath"
 	"time"
 	"unsafe"
 
@@ -16,31 +17,38 @@ import (
 type GameState int
 
 const (
-	GAMESTATE_TITLE GameState = 2
-	GAMESTATE_MENU  GameState = 1
-	GAMESTATE_GAME  GameState = 0
+	GAMESTATE_TITLE GameState = iota
+	GAMESTATE_MENU
+	GAMESTATE_GAME
 )
 
 type Game struct {
-	World               World
-	Camera              [2]float32
-	HasInitiatedUpdate  bool
-	HasInitiatedDraw    bool
-	Frames              int
-	SecondTimer         time.Time
-	ActualFPS           float32
-	DepthShift          float32
-	UsingDepthShift     bool
-	DepthShiftDirection bool
-	CurrentChunk        [2]int
-	ChunkSize           int
-	ChunkDepth          int
-	Player              Player
-	Framebuffer         *ebiten.Image
-	DebugMode           bool
-	ScreenX             int
-	ScreenY             int
-	GameState           GameState
+	GameState          GameState // gamestate enum
+	HasInitiatedUpdate bool      // init update flag
+	HasInitiatedDraw   bool      // init draw flag
+	DebugMode          bool      // are we debugging?
+
+	World        World  // in-game world position
+	Player       Player // player context
+	CurrentChunk [2]int // global chunk location of player
+
+	Camera              [2]float32 // camera location
+	Direction           [4]int     // rotation factor
+	DepthShift          float32    // depthshift coefficient
+	UsingDepthShift     bool       // using depthshift
+	DepthShiftDirection bool       // controls the direction of the depthshift
+
+	Frames      int       // frames per second? not sure why this is different from ActualFPS but use ActualFPS
+	SecondTimer time.Time // seconds per frame
+	ActualFPS   float32   // calculated FPS
+
+	Framebuffer *ebiten.Image // image destination
+	ScreenX     int           // width of the screen
+	ScreenY     int           // height of the screen
+	Font        *Font         // global font
+
+	ChunkSize  int // size of the chunk, for generation
+	ChunkDepth int // depth of the chunk, for generation
 }
 
 // MapSize returns the size of a map in bytes.
@@ -77,13 +85,14 @@ func main() {
 		ChunkSize:          32,
 		ChunkDepth:         64,
 		GameState:          GAMESTATE_TITLE,
+		UsingDepthShift:    true,
 	}
 
 	// init ebiten
-	initialWidth, initialHeight := 640, 480
+	initialWidth, initialHeight := 1280, 720
 	ebiten.SetTPS(60)
 	// SetVsyncEnabled(false) is only for debug purposes
-	// It is greatly reccomended to use SetVsyncEnabled(true) in production
+	// It is greatly recommended to use SetVsyncEnabled(true) in production
 	ebiten.SetVsyncEnabled(!game.DebugMode)
 	ebiten.SetWindowSize(initialWidth, initialHeight)
 	ebiten.SetWindowTitle("ISOMETRICA Infdev")
@@ -92,31 +101,29 @@ func main() {
 	// init render
 	initRender()
 
-	// check if there is a save file at the save path
-	savePath := "save/demo"
-	world, err := readWorld(savePath)
-	if err != nil {
-		log.Printf("Failed to load world: %v", err)
-		// create new world
-		log.Println("Creating new world ...")
-		game.World = World{
-			Chunks:     make(map[[2]int]Chunk),
-			ChunkSize:  32,
-			ChunkDepth: 64,
-			SavePath:   "save/demo",
-		}
-		game.World.Initalize(rand.Int64())
-	} else {
-		log.Println("Loading world from file.")
-		game.World = world
-	}
-
-	// init player
+	// init player, needs to happen before world is loaded
 	game.Player = Player{
 		Position: Vec3{0, 0, float32(game.World.SurfaceFeaturesBeginAt) + 10},
 		Velocity: Vec3{0, 0, 0},
 		Drag:     Vec3{.9, .9, .9},
 		Texture:  "Default",
+	}
+
+	// check if there is a save file at the save path
+	savePath := "save/demo"
+	err := game.LoadGame(savePath)
+	if err != nil {
+		log.Printf("Failed to load world: %v", err)
+		log.Println("Creating new world ...")
+
+		// create new world
+
+		game.World = World{}
+		game.World.Initialize(rand.Int64())
+		game.World.SavePath = filepath.Join("save", "demo")
+		game.MakeEmptySave()
+	} else {
+		log.Println("Loading world from file.")
 	}
 
 	// run the game

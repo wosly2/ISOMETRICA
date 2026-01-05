@@ -1,12 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"image"
-	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/aquilax/go-perlin"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -21,7 +16,7 @@ type VoxelDictionary struct {
 }
 
 // get a []string of voxels that are transparent
-func (vDict *VoxelDictionary) GetTranparentNames() (transparentNames []string) {
+func (vDict *VoxelDictionary) GetTransparentNames() (transparentNames []string) {
 	transparentNames = make([]string, len(vDict.Transparent)+len(vDict.TransparentNoCulling))
 	for i := 0; i < len(transparentNames); i++ {
 		if i < len(vDict.Transparent) {
@@ -165,173 +160,4 @@ func (w *World) GetVoxel(x, y, z int) (voxel Voxel, exists bool) {
 		voxel = chunk.GetVoxel(x%w.ChunkSize, y%w.ChunkSize, z)
 	}
 	return
-}
-
-// json writable world
-type WorldJSON struct {
-	Chunks   map[string]ChunkJSON `json:"chunks"` // the string is the chunk position in the format "x,y"
-	Seed     int64                `json:"seed"`
-	SavePath string               `json:"save_path"`
-}
-
-// json chunk
-type ChunkJSON struct {
-	// voxel name encoding map (for data compression)
-	VoxelNamesShort map[string]int `json:"voxel_names_short"`
-	VoxelNames      []int          `json:"voxel_names"`
-	Width           int            `json:"width"`
-	Height          int            `json:"height"`
-	Depth           int            `json:"depth"`
-}
-
-// world save structure:
-// save file (name of world)
-// // world.json (world json data)
-
-// make ChunkJSON key
-func ChunkJSONKey(key [2]int) string {
-	return fmt.Sprintf("%d,%d", key[0], key[1])
-}
-
-// parse ChunkJSON key
-func ParseChunkJSONKey(key string) (parsedKey [2]int, err error) {
-	var x, y int
-	_, err = fmt.Sscanf(key, "%d,%d", &x, &y)
-	parsedKey = [2]int{x, y}
-	return
-}
-
-// Convert a WorldJSON to a World
-func (worldJSON *WorldJSON) JSONToWorld() (world World) {
-	world = World{
-		Chunks:     make(map[[2]int]Chunk),
-		Seed:       worldJSON.Seed,
-		ChunkSize:  32,
-		ChunkDepth: 64,
-		SavePath:   worldJSON.SavePath,
-	}
-
-	for key := range worldJSON.Chunks {
-		parsedKey, _ := ParseChunkJSONKey(key)
-		world.Chunks[parsedKey] = worldJSON.Chunks[key].JSONToChunk()
-	}
-
-	return
-}
-
-// Convert a World to a WorldJSON
-func (world *World) WorldToJSON() (worldJSON WorldJSON) {
-	worldJSON.Chunks = make(map[string]ChunkJSON)
-	worldJSON.Seed = world.Seed
-	worldJSON.SavePath = world.SavePath
-
-	for key := range world.Chunks {
-		worldJSON.Chunks[ChunkJSONKey(key)] = world.Chunks[key].ChunkToJSON()
-	}
-
-	return
-}
-
-// Convert a ChunkJSON to a Chunk
-func (chunkJSON ChunkJSON) JSONToChunk() (chunk Chunk) {
-	chunk.Depth = chunkJSON.Depth
-	chunk.Width = chunkJSON.Width
-	chunk.Height = chunkJSON.Height
-	chunk.Voxels = make([]VoxelPointer, chunkJSON.Width*chunkJSON.Height*chunkJSON.Depth)
-	for i := range chunk.Voxels {
-		chunk.Voxels[i] = defaultVoxelDictionary.GetVoxelPointerTo(invertMap(chunkJSON.VoxelNamesShort)[chunkJSON.VoxelNames[i]])
-	}
-
-	return
-}
-
-// Convert a Chunk to a ChunkJSON
-func (chunk Chunk) ChunkToJSON() (chunkJSON ChunkJSON) {
-	chunkJSON.Depth = chunk.Depth
-	chunkJSON.Width = chunk.Width
-	chunkJSON.Height = chunk.Height
-	chunkJSON.VoxelNames = make([]int, len(chunk.Voxels))
-	chunkJSON.VoxelNamesShort = make(map[string]int)
-
-	// voxel name encoding map (for data compression)
-
-	// get all the unique voxel names
-	allVoxelNames := make([]string, 0)
-	for i := range chunk.Voxels {
-		allVoxelNames = append(allVoxelNames, chunk.Voxels[i].GetVoxel().Name)
-	}
-	uniqueVoxelNames := uniqueItems(allVoxelNames)
-
-	// create the encoding map
-	for i, voxelName := range uniqueVoxelNames {
-		chunkJSON.VoxelNamesShort[voxelName] = i
-	}
-
-	// encode the voxel names
-	for i := range allVoxelNames {
-		chunkJSON.VoxelNames[i] = chunkJSON.VoxelNamesShort[allVoxelNames[i]]
-	}
-
-	return
-}
-
-func readWorld(savePath string) (world World, err error) {
-	// open the file
-	file, err := os.Open(filepath.Join(savePath, "world.json"))
-	if err != nil {
-		return
-	}
-
-	// parse the text
-	decoder := json.NewDecoder(file)
-	defer file.Close()
-
-	var worldJSON WorldJSON
-	err = decoder.Decode(&worldJSON)
-	if err != nil {
-		return
-	}
-
-	// convert the WorldJSON to a World
-	world = worldJSON.JSONToWorld()
-
-	// initialize the world
-	world.Initalize(worldJSON.Seed)
-
-	return
-}
-
-// write a world to a file. this DOES overwrite any existing world file.
-// never use this to save a partially loaded world, as it will overwrite any currently unloaded chunks.
-func (world World) WriteWorld(savePath string) (err error) {
-	// ensure the save path exists
-	err = os.MkdirAll(savePath, 0755)
-	if err != nil {
-		log.Printf("ERROR: Failed to create save path: %v", err)
-		return
-	}
-
-	worldJSON := world.WorldToJSON()
-
-	// marshal the world to json
-	jsonData, err := json.Marshal(worldJSON)
-	if err != nil {
-		log.Printf("ERROR: Failed to marshal world: %v", err)
-		return
-	}
-
-	// write the json to a file
-	err = os.WriteFile(filepath.Join(savePath, "world.json"), jsonData, 0644)
-	if err != nil {
-		log.Printf("ERROR: Failed to write world: %v", err)
-		return
-	}
-
-	return
-}
-
-// check if there is a save file at the given path
-func worldExists(savePath string) bool {
-	_, err := os.Stat(filepath.Join(savePath, "world.json"))
-	return !os.IsNotExist(err)
 }
